@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 BOT_TOKEN = "8691005129:AAEUnoQYkGs1_tLRLlrSrOhXjjxL10AWpKI"
 GROQ_API_KEY = "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"
 ADMIN_ID = 6822309164
-CHANNELS = ["@MRAHMAD_1", "@EGMINIFARSI"]
+CHANNELS = ["@MRAHMAD_1", "@GMINIFARSI"]
 
 # مشخصات کارت بانکی شما برای واریز کاربرها
 CARD_NUMBER = "6037990000000000"  # شماره کارت خودت را بگذار
