@@ -5,7 +5,7 @@ from telebot import types
 from datetime import datetime, timedelta
 
 # ==================== تنظیمات اصلی ربات ====================
-BOT_TOKEN = "8566783342:AAGgME6Rn2011ZT4Q-B6RiJR8AFDytUdFjo"
+BOT_TOKEN = "8691005129:AAEUnoQYkGs1_tLRLlrSrOhXjjxL10AWpKI"
 GROQ_API_KEY = "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"
 ADMIN_ID = 6822309164
 CHANNELS = ["@MRAHMAD_1", "@EGMINIFARSI"]
