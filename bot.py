@@ -3,6 +3,10 @@ import requests
 import telebot
 from telebot import types
 from datetime import datetime, timedelta
+import threading
+import time
+from flask import Flask
+import os
 
 # ==================== تنظیمات اصلی ربات ====================
 BOT_TOKEN = "8691005129:AAEUnoQYkGs1_tLRLlrSrOhXjjxL10AWpKI"
