@@ -167,7 +167,7 @@ def call_gemini_ai_direct(user_message):
         }
         
         payload = {
-            "model": "llama-3.3-70b-versatile", 
+            "model": "llama3-8b-8192", 
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_message}
