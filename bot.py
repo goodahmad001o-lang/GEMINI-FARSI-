@@ -337,5 +337,14 @@ def handle_messages(message):
 
 if __name__ == '__main__':
     init_db()
-    print("🚀 ربات مجهز به کارت‌به‌کارت هوشمند و Groq Llama 3.3 فعال شد!")
+    
+    # اول وب‌سرور را روی ترید مجزا استارت می‌زنیم تا رندر معطل نشود
+    server_thread = threading.Thread(target=run_web_server)
+    server_thread.daemon = True
+    server_thread.start()
+    
+    import time
+    time.sleep(2) # دو ثانیه صبر می‌کنیم تا پورت کاملاً باز و آماده شود
+    
+    print("🚀 ربات هوشمند با سیستم دعوت و کارت‌به‌کارت سلطان فعال شد!")
     bot.infinity_polling()
