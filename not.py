@@ -472,5 +472,13 @@ def handle_messages(message):
 if __name__ == '__main__':
     init_db()
     
-    server_thread = threading.Thread(target=run_web_server)
-    server_thread
+    # ۱. اول ترید مربوط به ربات تلگرام را به صورت پس‌زمینه می‌سازیم و استارت می‌زنیم
+    bot_thread = threading.Thread(target=bot.infinity_polling)
+    bot_thread.daemon = True
+    bot_thread.start()
+    
+    print("🚀 ربات هوشمند در پس‌زمینه فعال شد!")
+    
+    # ۲. حالا وب‌سرور اصلی را روی ترید اصلی سرور بالا می‌آوریم تا رندر بلافاصله پورت را ببیند
+    print("🌐 در حال راه‌اندازی وب‌سرور روی پورت ۱۰,۰۰۰...")
+    run_web_server()
