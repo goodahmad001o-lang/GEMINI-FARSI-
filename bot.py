@@ -5,7 +5,7 @@ from telebot import types
 import groq
 
 # --- تنظیمات اصلی ربات ---
-BOT_TOKEN = "8691005129:AAGF-rvF9K5fOZONM-8JPXguhDKl4mKQni4"
+BOT_TOKEN = "8691005129:AAG7R-6YqkTKPVwADyDBFPE-wwyRHYRz6VA"
 GROQ_API_KEY ="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"
 CHANNEL_ID = "GMINIFARSI"  # آیدی کانال خودت را بدون @ یا با @ اینجا بذار (مثلاً @mychannel)
 CHANNEL_LINK = "https://t.me/gemini_farsi_channel" # لینک کانال تو
