@@ -8,7 +8,7 @@ from flask import Flask
 import os
 
 # ==================== تنظیمات اصلی ربات ====================
-BOT_TOKEN = "8691005129:AAEUnoQYkGs1_tLRLlrSrOhXjjxL10AWpKI"
+BOT_TOKEN = "8691005129:AAGF-rvF9K5fOZONM-8JPXguhDKl4mKQni4"
 GROQ_API_KEY = "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"
 ADMIN_ID = 6822309164
 CHANNELS = ["@MRAHMAD_1", "@GMINIFARSI"]
