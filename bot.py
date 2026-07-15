@@ -1,33 +1,42 @@
 import os
 import sqlite3
-import threading
-from flask import Flask
+from flask import Flask, request
 import telebot
 from telebot import types
 import groq
 
-# --- وب‌سرور فلاسک برای باز نگه داشتن پورت رندر ---
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Bot is alive and running!"
-
-def run_flask():
-    # رندر پورت را به عنوان یک متغیر محیطی (PORT) به ما می‌دهد، اگر نبود از 10000 استفاده می‌کنیم
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-
 # --- تنظیمات اصلی ربات ---
 BOT_TOKEN = "8691005129:AAG7R-6YqkTKPVwADyDBFPE-wwyRHYRz6VA"
 GROQ_API_KEY = "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"
-CHANNEL_ID = "@gminifarsi"  # آیدی کانال خودت را بدون @ یا با @ اینجا بذار (مثلاً @mychannel)
+CHANNEL_ID = "@gminifarsi"  # آیدی کانال خودت
 CHANNEL_LINK = "https://t.me/gemini_farsi_channel" # لینک کانال تو
-ADMIN_ID = 6822309164  # آیدی عددی تلگرام خودت را اینجا بنویس تا پنل مدیریت فقط برای تو باز شود
+ADMIN_ID = 6822309164  # آیدی عددی تلگرام خودت
+
+# آدرس اختصاصی ربات شما روی رندر (حتماً ته آن اسلش نگذارید)
+# مثال: https://gemini-farsi-bot.onrender.com
+RENDER_APP_URL = "https://gemini-farsi-bot.onrender.com" 
 
 # راه اندازی ربات و کلاینت گروک
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN, threaded=False)
 groq_client = groq.Groq(api_key=GROQ_API_KEY)
+
+# وب‌سرور فلاسک
+app = Flask(__name__)
+
+# --- مسیر اصلی برای تست زنده بودن سرور ---
+@app.route('/')
+def home():
+    return "Bot is alive and running with Webhook!", 200
+
+# --- مسیر دریافت پیام‌ها از تلگرام (Webhook endpoint) ---
+@app.route(f'/{BOT_TOKEN}', methods=['POST'])
+def get_message():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return "OK", 200
+    return "Forbidden", 403
 
 # --- راه اندازی دیتابیس برای ذخیره اطلاعات ---
 def init_db():
@@ -92,7 +101,6 @@ def check_sub(user_id):
             return True
         return False
     except Exception:
-        # اگر ربات در کانال ادمین نباشد، موقتا True برمی‌گردانیم تا ربات بدون ارور تست شود
         return True
 
 # --- دکمه‌های اصلی کیبورد ---
@@ -110,18 +118,16 @@ def start_cmd(message):
     user_id = message.from_user.id
     username = message.from_user.username or "NoUsername"
     
-    # بررسی لینک دعوت
     referred_by = None
     start_args = message.text.split()
     if len(start_args) > 1:
         try:
             referred_by = int(start_args[1])
-            if referred_by == user_id:  # کاربر نمی‌تواند خودش را دعوت کند
+            if referred_by == user_id:
                 referred_by = None
         except ValueError:
             pass
 
-    # ثبت کاربر در دیتابیس
     user_exists = get_user(user_id)
     if not user_exists:
         add_user(user_id, username, referred_by)
@@ -131,9 +137,7 @@ def start_cmd(message):
             except Exception:
                 pass
 
-    # برداشتن نام کوچک کاربر به صورت خودکار از تلگرام
     user_first_name = message.from_user.first_name or "دوست"
-
     welcome_text = (
         f"سلام {user_first_name} عزیز به ربات هوش مصنوعی پیشرفته خوش آمدید! ⚡\n\n"
         f"این ربات به قوی‌ترین مدل‌های هوش مصنوعی دنیا متصل است.\n"
@@ -179,7 +183,6 @@ def account_status(message):
 def admin_panel(message):
     total, unlocked = get_stats()
     
-    # رسم یک نمودار متنی ساده و شیک برای رشد کاربران
     bar_total = "🟩" * min(10, max(1, total // 10 if total > 0 else 0))
     bar_unlocked = "🟦" * min(10, max(1, unlocked // 10 if unlocked > 0 else 0))
     
@@ -222,12 +225,11 @@ def send_all_cmd(message):
             
     bot.send_message(ADMIN_ID, f"📢 پیام همگانی با موفقیت به {success} کاربر ارسال شد.")
 
-# --- بخش اصلی: چت با هوش مصنوعی (همراه با قفل کانال و قفل رفرال) ---
+# --- بخش اصلی: چت با هوش مصنوعی ---
 @bot.message_handler(func=lambda msg: msg.text == "🧠 چت با هوش مصنوعی" or not msg.text.startswith("/"))
 def ai_chat(message):
     user_id = message.from_user.id
     
-    # ۱. بررسی قفل جوین اجباری کانال
     if not check_sub(user_id):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("عضویت در کانال ما 📢", url=CHANNEL_LINK))
@@ -238,7 +240,6 @@ def ai_chat(message):
         )
         return
 
-    # ۲. بررسی تعداد رفرال‌ها (دعوت ۱۰ نفر)
     user = get_user(user_id)
     ref_count = user[3] if user else 0
     
@@ -255,16 +256,13 @@ def ai_chat(message):
         bot.send_message(user_id, warning_text, parse_mode='Markdown')
         return
 
-    # ۳. شروع پردازش چت با هوش مصنوعی (فقط در صورتی که کاربر دکمه نزده باشد و متن عادی فرستاده باشد)
     if message.text == "🧠 چت با هوش مصنوعی":
         bot.send_message(user_id, "🤖 قفل حساب شما باز است! هر سوالی داری بنویس تا با هوش مصنوعی پاسخ دهم:")
         return
 
-    # ارسال حالت در حال تایپ
     bot.send_chat_action(user_id, 'typing')
 
     try:
-        # فراخوانی API گروک با پرامپت سیستمی بسیار قوی برای فارسی روان و عامیانه
         chat_completion = groq_client.chat.completions.create(
             messages=[
                 {
@@ -280,36 +278,25 @@ def ai_chat(message):
                     "content": message.text,
                 }
             ],
-            model="llama3-8b-8192", # یا مدل قوی‌تر مثل llama-3.1-70b-versatile
+            model="llama3-8b-8192",
         )
         
         response_text = chat_completion.choices[0].message.content
-        
-        # ارسال پاسخ با پارامتر Markdown جهت نمایش صحیح ستاره‌ها و ضخیم کردن متن‌ها در تلگرام
         bot.send_message(user_id, response_text, parse_mode='Markdown')
         
     except Exception as e:
-        # اگر خطایی در مارک‌داون رخ داد، بدون مارک‌داون می‌فرستیم تا ربات کرش نکند
         try:
             bot.send_message(user_id, response_text)
         except Exception:
             bot.send_message(user_id, "❌ متاسفانه در ارتباط با هوش مصنوعی خطایی رخ داد. لطفا دوباره تلاش کنید.")
 
-# اجرای همزمان فلاسک و ربات تلگرام
+# اجرای فلاسک و تنظیم وب‌هوک
 if __name__ == '__main__':
-    # ۱. راه اندازی وب‌سرور فلاسک در پس‌زمینه
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.daemon = True
-    flask_thread.start()
-    print("Flask server started...")
+    # حذف پاولینگ‌های قدیمی و فعال‌سازی وب‌هوک جدید روی تلگرام
+    bot.remove_webhook()
+    bot.set_webhook(url=f"{RENDER_APP_URL}/{BOT_TOKEN}")
+    print("Webhook successfully set!")
     
-    # ۲. قطع اتصال‌های قبلی و پاکسازی وب‌هوک‌ها برای نابودی ارور ۴۰۹
-    try:
-        bot.remove_webhook()
-    except Exception as e:
-        print(f"Error removing webhook: {e}")
-    
-    # ۳. اجرای ربات تلگرام با متد ضد تداخل
-    print("Bot is running...")
-    # متد ()infinity_polling را تغییر می‌دهیم تا با قطع شدن‌های موقت رندر تداخل پیدا نکند
-    bot.polling(none_stop=True, interval=0, timeout=20)
+    # اجرای وب‌سرور فلاسک به صورت مستقیم
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
