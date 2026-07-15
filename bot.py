@@ -1,13 +1,27 @@
 import os
 import sqlite3
+import threading
+from flask import Flask
 import telebot
 from telebot import types
 import groq
 
+# --- وب‌سرور فلاسک برای باز نگه داشتن پورت رندر ---
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is alive and running!"
+
+def run_flask():
+    # رندر پورت را به عنوان یک متغیر محیطی (PORT) به ما می‌دهد، اگر نبود از 10000 استفاده می‌کنیم
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
 # --- تنظیمات اصلی ربات ---
 BOT_TOKEN = "8691005129:AAG7R-6YqkTKPVwADyDBFPE-wwyRHYRz6VA"
-GROQ_API_KEY ="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"
-CHANNEL_ID = "GMINIFARSI"  # آیدی کانال خودت را بدون @ یا با @ اینجا بذار (مثلاً @mychannel)
+GROQ_API_KEY = "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"
+CHANNEL_ID = "@gminifarsi"  # آیدی کانال خودت را بدون @ یا با @ اینجا بذار (مثلاً @mychannel)
 CHANNEL_LINK = "https://t.me/gemini_farsi_channel" # لینک کانال تو
 ADMIN_ID = 6822309164  # آیدی عددی تلگرام خودت را اینجا بنویس تا پنل مدیریت فقط برای تو باز شود
 
@@ -78,7 +92,7 @@ def check_sub(user_id):
             return True
         return False
     except Exception:
-        # اگر کانال خصوصی است یا ربات ادمین نیست، این بخش را موقتا True برمی‌گردانیم
+        # اگر ربات در کانال ادمین نباشد، موقتا True برمی‌گردانیم تا ربات بدون ارور تست شود
         return True
 
 # --- دکمه‌های اصلی کیبورد ---
@@ -278,7 +292,14 @@ def ai_chat(message):
         except Exception:
             bot.send_message(user_id, "❌ متاسفانه در ارتباط با هوش مصنوعی خطایی رخ داد. لطفا دوباره تلاش کنید.")
 
-# اجرای ربات
+# اجرای همزمان فلاسک و ربات تلگرام
 if __name__ == '__main__':
+    # ۱. راه اندازی وب‌سرور فلاسک در پس‌زمینه (برای باز ماندن پورت رندر)
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+    print("Flask server started in background thread...")
+    
+    # ۲. اجرای ربات تلگرام در ترد اصلی
     print("Bot is running...")
     bot.infinity_polling()
