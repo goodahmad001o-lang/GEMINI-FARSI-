@@ -297,12 +297,19 @@ def ai_chat(message):
 
 # اجرای همزمان فلاسک و ربات تلگرام
 if __name__ == '__main__':
-    # ۱. راه اندازی وب‌سرور فلاسک در پس‌زمینه (برای باز ماندن پورت رندر)
+    # ۱. راه اندازی وب‌سرور فلاسک در پس‌زمینه
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.daemon = True
     flask_thread.start()
-    print("Flask server started in background thread...")
+    print("Flask server started...")
     
-    # ۲. اجرای ربات تلگرام در ترد اصلی
+    # ۲. قطع اتصال‌های قبلی و پاکسازی وب‌هوک‌ها برای نابودی ارور ۴۰۹
+    try:
+        bot.remove_webhook()
+    except Exception as e:
+        print(f"Error removing webhook: {e}")
+    
+    # ۳. اجرای ربات تلگرام با متد ضد تداخل
     print("Bot is running...")
-    bot.infinity_polling()
+    # متد ()infinity_polling را تغییر می‌دهیم تا با قطع شدن‌های موقت رندر تداخل پیدا نکند
+    bot.polling(none_stop=True, interval=0, timeout=20)
