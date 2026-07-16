@@ -10,7 +10,7 @@ BOT_TOKEN = "8691005129:AAG7R-6YqkTKPVwADyDBFPE-wwyRHYRz6VA"
 GROQ_API_KEY = "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"
 CHANNEL_ID = "@GMINIFARSI"
 CHANNEL_LINK = "https://t.me/gemini_farsi_channel"
-ADMIN_ID = 6822309164 # آیدی عددی تلگرام خودت
+ADMIN_ID = 6822309164  # آیدی عددی تلگرام خودت
 
 # آدرس سرور رندر شما (بدون اسلش در انتها)
 RENDER_APP_URL = "https://gemini-farsi-bot.onrender.com"
@@ -21,8 +21,7 @@ groq_client = groq.Groq(api_key=GROQ_API_KEY)
 
 app = Flask(__name__)
 
-# --- دیتابیس موقت در حافظه برای متن و لینک تبلیغات بالای صفحه ---
-# ادمین می‌تواند این مقادیر را تغییر دهد
+# --- دیتابیس موقت برای متن و لینک تبلیغات بالای صفحه ---
 AD_TEXT = "🔥 اسپانسر امروز: بهترین کانال آموزش برنامه نویسی ایران! عضو شوید"
 AD_LINK = "https://t.me/your_sponsor_channel"
 
@@ -91,7 +90,7 @@ def check_sub(user_id):
     except Exception:
         return True
 
-# --- قالب گرافیکی صفحه وب مینی‌اپ (HTML + CSS + JS) ---
+# --- قالب گرافیکی صفحه وب مینی‌اپ ---
 WEB_APP_HTML = """
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -103,7 +102,6 @@ WEB_APP_HTML = """
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Tahoma, Arial, sans-serif; }
         body { background-color: #121212; color: #fff; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* بنر تبلیغاتی متحرک و شیک بالای صفحه */
         .ad-banner {
             background: linear-gradient(45deg, #ff416c, #ff4b2b);
             color: white;
@@ -132,7 +130,6 @@ WEB_APP_HTML = """
 </head>
 <body>
 
-    <!-- بنر تبلیغاتی بالای صفحه وب اپ -->
     <a href="{{ ad_link }}" target="_blank" class="ad-banner">
         📢 {{ ad_text }}
     </a>
@@ -153,12 +150,10 @@ WEB_APP_HTML = """
             const text = input.value.trim();
             if(!text) return;
 
-            // اضافه کردن پیام کاربر به صفحه
             chatBox.innerHTML += `<div class="message user-msg">${text}</div>`;
             input.value = '';
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // ارسال پیام به سرور و گرفتن جواب هوش مصنوعی
             fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -219,10 +214,8 @@ def get_message():
 # --- دکمه‌های کیبورد ربات با دکمه وب‌اپ ---
 def main_keyboard(user_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    
-    # دکمه مینی اپ که آدرس صفحه وب را باز می‌کند
     web_app_info = types.WebAppInfo(f"{RENDER_APP_URL}/webapp")
-    btn_webapp = types.KeyboardButton("🧠 شروع چت با هوش مصنوعی (Mini App)", web_app=web_app_info)
+    btn_webapp = types.KeyboardButton("🧠 چت با هوش مصنوعی", web_app=web_app_info)
     
     markup.add(btn_webapp)
     markup.row("👥 زیرمجموعه‌گیری (دعوت)", "📊 وضعیت حساب من")
