@@ -6,7 +6,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
 # ۱. تنظیمات اولیه و توکن‌ها
-BOT_TOKEN = os.environ.get("8358283348:AAFJO37rjWxTfrHq2lzgoUIFBINTHz3Mjuc", "")
+BOT_TOKEN = ("8358283348:AAFJO37rjWxTfrHq2lzgoUIFBINTHz3Mjuc", "")
 GEMINI_API_KEY = os.environ.get("AQ.Ab8RN6IYakiQMn-1sAKeCSR3-aT-Wc4CBc6zQoAFkyWodq7kdg", "")
 SPONSOR_CHANNEL = os.environ.get("@GMINIFARSI", "@MRAHMAD_1") # آیدی کانال خودت را اینجا یا در رندر ست کن
 
