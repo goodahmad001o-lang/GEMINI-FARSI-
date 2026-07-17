@@ -1,107 +1,120 @@
 import os
-import requests
 import telebot
 from telebot import types
-import google.generativeai as genai
-from PIL import Image
-import io
+from google import genai
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
-# ۱. دریافت توکن‌ها از متغیرهای محیطی رندر
-BOT_TOKEN = os.environ.get("8691005129:AAG7R-6YqkTKPVwADyDBFPE-wwyRHYRz6VA", "")
-GEMINI_API_KEY = os.environ.get("AQ.Ab8RN6IL6_p1DZY_bA2ElNEjNY-NbSohnxuMgqvUizMm42sOfg", "")
+# ۱. تنظیمات اولیه و توکن‌ها
+BOT_TOKEN = os.environ.get("8358283348:AAFJO37rjWxTfrHq2lzgoUIFBINTHz3Mjuc", "")
+GEMINI_API_KEY = os.environ.get("AQ.Ab8RN6IYakiQMn-1sAKeCSR3-aT-Wc4CBc6zQoAFkyWodq7kdg", "")
+SPONSOR_CHANNEL = os.environ.get("@GMINIFARSI", "@MRAHMAD_1") # آیدی کانال خودت را اینجا یا در رندر ست کن
 
-# راه‌اندازی ربات تلگرام و هوش مصنوعی جمینای
 bot = telebot.TeleBot(BOT_TOKEN)
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-# ۲. اطلاعات فروشگاه (مغازه‌دار این متن را تغییر می‌دهد)
-SHOP_INFO = """
-نام فروشگاه: شیک پوش (فروشگاه آنلاین لباس مردانه)
-قوانین ارسال: ارسال با پست پیشتاز به سراسر کشور (هزینه ۵۰ هزار تومان). تحویل ۳ الی ۵ روز کاری.
-روش پرداخت: کارت به کارت به شماره کارت [۶۰۳۷-۹۹۱۹-۱۲۳۴-۵۶۷۸] به نام احمد احمدی. بعد از واریز حتما عکس فیش را اینجا بفرستید.
+# دیتابیس فرضی در حافظه برای ثبت پیش‌بینی‌ها
+user_predictions = {}
 
-لیست محصولات موجود:
-۱. هودی اورسایز مشکی - قیمت: ۵۸۰,۰۰۰ تومان - سایزها: L, XL, XXL - جنس: دورس ۳ نخ پنبه
-۲. شلوار کارگو کتان سبز - قیمت: ۶۵۰,۰۰۰ تومان - سایزها: ۳۰ تا ۳۶ - رنگ‌ها: سبز زیتونی، مشکی
-۳. تیشرت یقه گرد ساده - قیمت: ۲۹۰,۰۰۰ تومان - سایزها: M, L, XL - رنگ: سفید، طوسی
-"""
+# نمونه چالش امروز
+CHALLENGE_TEXT = "⚽️ مسابقه امشب: رئال مادرید - بارسلونا\n⏰ ساعت: ۲۳:۳۰"
+OPTIONS = ["برد رئال مادرید", "مساوی", "برد بارسلونا"]
 
-# پرامپت هدایت لحن هوش مصنوعی
-SYSTEM_PROMPT = f"""
-تو ادمین مهربان، مودب، صبور و حرفه‌ای فروشگاه تلگرامی هستی. وظیفه تو این است که بر اساس اطلاعات فروشگاه زیر به مشتریان پاسخ دهی:
-{SHOP_INFO}
-
-دستورالعمل‌ها:
-- لحن تو صمیمی، محترمانه و ترغیب‌کننده به خرید باشد. از ایموجی‌های مناسب استفاده کن.
-- پاسخ‌های کوتاه و تلگرامی بفرست تا خواندنش راحت باشد.
-"""
+# بررسی عضویت در کانال اسپانسر
+def is_user_subscribed(user_id):
+    try:
+        member = bot.get_chat_member(SPONSOR_CHANNEL, user_id)
+        if member.status in ['member', 'administrator', 'creator']:
+            return True
+        return False
+    except Exception:
+        # اگر کانال ست نشده باشد یا ربات ادمین نباشد، برای تست True برمی‌گرداند
+        return True
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    welcome_text = (
-        "سلام! به بوتیک آنلاین **شیک‌پوش** خوش آمدید 🛒✨\n\n"
-        "من دستیار هوش مصنوعی فروشگاه هستم و ۲۴ ساعته در خدمتم.\n"
-        "هر سوالی درباره قیمت، سایز، موجودی و نحوه ارسال داری بپرس تا راهنماییت کنم!\n\n"
-        "🛍️ برای خرید، کافیه محصولت رو انتخاب کنی و بعد از واریز وجه، **عکس فیش واریزی** رو برام بفرستی."
-    )
-    bot.reply_to(message, welcome_text)
-
-# بررسی عکس فیش واریزی با جمینای
-@bot.message_handler(content_types=['photo'])
-def handle_receipt(message):
-    processing_msg = bot.reply_to(message, "🔄 در حال آنالیز و تایید فیش واریزی با هوش مصنوعی... لطفاً چند لحظه صبر کنید.")
+    user_id = message.chat.id
     
-    try:
-        file_info = bot.get_file(message.photo[-1].file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        image = Image.open(io.BytesIO(downloaded_file))
-        
-        receipt_prompt = """
-        این عکس یک فیش واریزی کارت به کارت بانکی در ایران است. آن را با دقت بسیار بالا تحلیل کن و پاسخ را دقیقا به زبان فارسی در قالب زیر ارائه بده:
-        
-        وضعیت فیش: [تایید شده / مشکوک به جعل / نامعتبر]
-        مبلغ تراکنش: [مبلغ به ریال یا تومان]
-        شماره پیگیری/مرجع: [کد پیگیری]
-        تاریخ و ساعت تراکنش: [مثال: ۱۴۰۳/۱۲/۰۵ ساعت ۱۵:۳۰]
-        توضیحات امنیت فیش: [اگر فونت ناهمخوان است یا رسید فاقد کدهای رهگیری رسمی است قید کن. در غیر این صورت بنویس: فونت و ساختار فیش طبیعی به نظر می‌رسد.]
-        """
-        
-        response = model.generate_content([receipt_prompt, image])
-        bot.delete_message(message.chat.id, processing_msg.message_id)
-        bot.reply_to(message, f"🔍 **نتیجه بررسی رسید شما:**\n\n{response.text}")
-        
-    except Exception as e:
-        bot.edit_message_text(f"❌ خطا در پردازش تصویر فیش: {str(e)}", message.chat.id, processing_msg.message_id)
+    # قفل عضویت اجباری
+    if not is_user_subscribed(user_id):
+        markup = types.InlineKeyboardMarkup()
+        btn_join = types.InlineKeyboardButton("📢 عضویت در کانال", url=f"https://t.me/{SPONSOR_CHANNEL.replace('@','')}")
+        btn_check = types.InlineKeyboardButton("🔄 عضو شدم! ورود به مسابقه", callback_data="check_subs")
+        markup.add(btn_join)
+        markup.add(btn_check)
+        bot.send_message(user_id, f"👋 سلام! برای شرکت در مسابقات بزرگ پیش‌بینی و بردن کارت هدیه و شارژ، ابتدا باید در کانال زیر عضو شوی:", reply_markup=markup)
+        return
 
-# پاسخ به پیام‌های متنی مشتری
+    show_main_menu(user_id)
+
+def show_main_menu(user_id):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("🎯 شرکت در چالش امروز")
+    markup.row("🧠 مشورت با هوش مصنوعی (جمینای)", "📊 وضعیت پیش‌بینی من")
+    
+    bot.send_message(user_id, "🎉 به ربات پیش‌بینی هوشمند خوش آمدی!\nیک گزینه را انتخاب کن:", reply_markup=markup)
+
+# بررسی کلیک روی دکمه عضو شدم
+@bot.callback_query_handler(func=lambda call: call.data == "check_subs")
+def check_callback(call):
+    if is_user_subscribed(call.message.chat.id):
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        show_main_menu(call.message.chat.id)
+    else:
+        bot.answer_callback_query(call.id, "❌ هنوز در کانال عضو نشده‌ای!", show_alert=True)
+
+# مدیریت دکمه‌های منو
 @bot.message_handler(func=lambda message: True)
-def handle_chat(message):
-    try:
-        chat = model.start_chat(history=[])
-        full_query = f"{SYSTEM_PROMPT}\n\nپیام مشتری: {message.text}"
-        response = chat.send_message(full_query)
-        bot.reply_to(message, response.text)
-    except Exception as e:
-        bot.reply_to(message, "عذرخواهی می‌کنم، سرور در حال حاضر پاسخگو نیست.")
+def handle_menu(message):
+    user_id = message.chat.id
+    
+    if not is_user_subscribed(user_id):
+        bot.reply_to(message, "⚠️ لطفاً ابتدا با دستور /start عضویت خود را تایید کنید.")
+        return
 
-# کدهای حل مشکل پورت رندر (Port Binding)
+    if message.text == "🎯 شرکت در چالش امروز":
+        markup = types.InlineKeyboardMarkup()
+        for idx, opt in enumerate(OPTIONS):
+            markup.add(types.InlineKeyboardButton(opt, callback_data=f"predict_{idx}"))
+        
+        bot.send_message(user_id, f"📝 **{CHALLENGE_TEXT}**\n\nگزینه مورد نظر خودت را برای پیش‌بینی انتخاب کن:", reply_markup=markup)
+
+    elif message.text == "🧠 مشورت با هوش مصنوعی (جمینای)":
+        bot.send_message(user_id, "🔄 در حال آنالیز اخبار و داده‌های ورزشی توسط جمینای... لطفاً صبر کنید.")
+        try:
+            prompt = f"با توجه به وضعیت فعلی تیم‌های رئال مادرید و بارسلونا در سال ۲۰۲۶، یک تحلیل بسیار کوتاه و جذاب ۲ خطی به زبان فارسی بگو و درصد احتمال برد هر کدام (رئال، مساوی، بارسا) را مشخص کن تا کاربر برای پیش‌بینی راهنمایی شود."
+            response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+            bot.send_message(user_id, f"🔮 **پیش‌بینی و تحلیل هوش مصنوعی:**\n\n{response.text}")
+        except Exception as e:
+            bot.send_message(user_id, "❌ خطایی در ارتباط با هوش مصنوعی رخ داد.")
+
+    elif message.text == "📊 وضعیت پیش‌بینی من":
+        pred = user_predictions.get(user_id, "هنوز هیچ پیش‌بینی ثبت نکرده‌ای!")
+        bot.send_message(user_id, f"🔍 آخرین وضعیت شما:\n\n{pred}")
+
+# ثبت پیش‌بینی کاربر
+@bot.callback_query_handler(func=lambda call: call.data.startswith("predict_"))
+def save_prediction(call):
+    user_id = call.message.chat.id
+    opt_idx = int(call.data.split("_")[1])
+    selected_option = OPTIONS[opt_idx]
+    
+    user_predictions[user_id] = f"ثبت شده: {selected_option}"
+    
+    bot.answer_callback_query(call.id, "✅ پیش‌بینی شما با موفقیت ثبت شد!", show_alert=True)
+    bot.edit_message_text(f"🚀 پیش‌بینی شما برای چالش امروز ثبت شد:\n✨ **{selected_option}**\n\nنتایج نهایی پس از پایان مسابقه اعلام می‌شود.", user_id, call.message.message_id)
+
+# وب‌سرور برای زنده نگه داشتن پورت رندر
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
-        self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(b"Bot is running smoothly!")
+        self.wfile.write(b"Predict Bot is Active!")
 
 def run_health_server():
     port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-    server.serve_forever()
+    HTTPServer(('0.0.0.0', port), HealthCheckHandler).serve_forever()
 
 if __name__ == "__main__":
-    # اجرای وب‌سرور سلامتی در یک رشته جداگانه برای دور زدن ارور پورت رندر
     threading.Thread(target=run_health_server, daemon=True).start()
-    # اجرای ربات تلگرام
     bot.infinity_polling()
