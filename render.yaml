@@ -2,6 +2,6 @@ services:
   - type: web
     name: gemini-farsi-bot
     env: python
-    plan: free  # این خط بسیار مهم است تا کارت نخواهد!
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
