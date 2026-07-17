@@ -1,4 +1,4 @@
 pyTelegramBotAPI
-requests
-flask
-groq
+google-generativeai
+Pillow
+cryptography
